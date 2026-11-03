@@ -1,3 +1,5 @@
+
+
 replicaCount: 2
 
 image:
@@ -50,11 +52,19 @@ livenessProbe:
   httpGet:
     path: /
     port: http
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
 
 readinessProbe:
   httpGet:
     path: /
     port: http
+  initialDelaySeconds: 60
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 6
 
 autoscaling:
   enabled: false
