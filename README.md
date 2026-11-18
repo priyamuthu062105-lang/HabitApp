@@ -1,106 +1,173 @@
-# Habit Tracker
 
-A self-contained Spring Boot REST API + dashboard for tracking daily/weekly habits and streaks.
-**No external database** — all data is held in memory (`ConcurrentHashMap`) for the life of the process.
+# HabitApp – CI/CD Deployment on Kubernetes
 
-## Tech stack
-- Java 21 (or higher — LTS)
-- Spring Boot 3.3.4 (`spring-boot-starter-web`, `spring-boot-starter-validation`)
-- Maven (packaged as an executable jar)
-- Vanilla HTML/CSS/JS dashboard (served as a static resource, no frontend build step)
+## 1. Project Overview
 
-## Requirements
-- **JDK 21+** installed and set as `JAVA_HOME` (verify with `java -version`)
-- Maven 3.6+ (verify with `mvn -version`)
+HabitApp is a Habit Tracker web application built using Java 21 and Spring Boot.
 
-## Build
+This project demonstrates an end-to-end CI/CD and GitOps workflow using Jenkins, Docker, SonarCloud, Helm, Kubernetes, and Argo CD.
 
-```bash
-mvn clean package
-```
+## 2. Technologies Used
 
-This produces `target/habit-tracker.jar`.
+- Java 21
+- Spring Boot 3.3.4
+- Maven
+- HTML, CSS, JavaScript
+- Docker
+- Docker Hub
+- Jenkins
+- SonarCloud
+- Kubernetes (k3d / K3s)
+- Helm
+- Argo CD
+- Traefik Ingress
+- GitHub
 
-## Run
+## 3. Application Features
 
-```bash
-java -jar target/habit-tracker.jar
-```
+- Add new habits
+- Select daily or weekly frequency
+- Mark habits as completed
+- Track current streak
+- Track longest streak
+- View habit statistics
+- Delete habits
 
-Then open **http://localhost:8080** in your browser for the dashboard, or call the API directly.
+Note: The current application stores habit data in server memory. Data is not persistent across application restarts.
 
-## REST API
+## 4. CI/CD Pipeline
 
-| Method | Endpoint                        | Description                          |
-|--------|----------------------------------|---------------------------------------|
-| GET    | `/api/habits`                    | List all habits                      |
-| GET    | `/api/habits/{id}`               | Get a single habit                   |
-| POST   | `/api/habits`                    | Create a habit                       |
-| PUT    | `/api/habits/{id}`               | Update a habit's name/description    |
-| DELETE | `/api/habits/{id}`               | Delete a habit                       |
-| PATCH  | `/api/habits/{id}/active`        | Activate/deactivate a habit          |
-| POST   | `/api/habits/{id}/complete`      | Mark habit complete for today (or `?date=YYYY-MM-DD`) |
-| DELETE | `/api/habits/{id}/complete`      | Unmark completion for a date         |
-| GET    | `/api/habits/{id}/stats`         | Streaks + last-7-day completion rate |
+The Jenkins pipeline performs the following stages:
 
-### Example: create a habit
+1. GitHub source code checkout
+2. Maven build
+3. Unit testing
+4. SonarCloud code analysis
+5. Quality Gate verification
+6. Docker image build
+7. Docker image push to Docker Hub
+8. Helm chart validation
+9. GitOps deployment configuration update
 
-```bash
-curl -X POST http://localhost:8080/api/habits \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Drink water","description":"8 glasses a day","frequency":"DAILY"}'
-```
+## 5. Docker Configuration
 
-### Example: mark it done today
+- Docker image: gokulapriyam/habitapp
+- Image tag: 7
+- Application port: 8080
+- Java runtime: Eclipse Temurin 21
+- Container runs as a non-root user.
 
-```bash
-curl -X POST http://localhost:8080/api/habits/1/complete
-```
+## 6. Kubernetes Deployment
 
-## SonarQube code scan
+The application is deployed on a local k3d Kubernetes cluster.
 
-### Requirements
-- A running SonarQube server (Community Edition is fine) — locally via Docker is easiest, or use SonarCloud
-- Java 21+ (same JDK used to build the project)
-- Maven 3.6+
-- A Sonar authentication token (generate from the SonarQube UI: **My Account → Security → Generate Token**)
-- Network access from your machine to the SonarQube server (default port `9000`)
+Namespace: habitapp
 
-### 1. Start a local SonarQube server (skip if you already have one, or are using SonarCloud)
-```bash
-docker run -d --name sonarqube -p 9000:9000 sonarqube:community
-```
-Wait ~1 minute, then open http://localhost:9000 (default login `admin` / `admin`, it'll prompt you to change the password). Generate a token as noted above.
+Deployment: habitapp-habitapp-chart
 
-### 2. Run the scan via Maven (recommended — no separate scanner install needed)
-```bash
-mvn clean verify sonar:sonar \
-  -Dsonar.host.url=http://localhost:9000 \
-  -Dsonar.token=YOUR_GENERATED_TOKEN
-```
-- `clean verify` compiles, runs tests, and generates the JaCoCo coverage report the `pom.xml` is already configured to produce.
-- `sonar:sonar` (from the `sonar-maven-plugin` already added to `pom.xml`) runs the actual analysis and uploads results to the server.
+Replicas: 2
 
-### 3. Alternative: standalone `sonar-scanner` CLI
-If you'd rather not use the Maven plugin, install the [SonarScanner CLI](https://docs.sonarsource.com/sonarqube/latest/analyzing-source-code/scanners/sonarscanner/), then from the project root:
-```bash
-mvn clean verify        # still needed, to produce target/classes + jacoco.xml
-sonar-scanner -Dsonar.token=YOUR_GENERATED_TOKEN
-```
-This picks up settings from `sonar-project.properties`, already included in the project.
+Service type: ClusterIP
 
-### 4. Using SonarCloud instead of a local server
-Replace `-Dsonar.host.url` with SonarCloud's URL and add your organization key:
-```bash
-mvn clean verify sonar:sonar \
-  -Dsonar.host.url=https://sonarcloud.io \
-  -Dsonar.organization=YOUR_ORG_KEY \
-  -Dsonar.token=YOUR_SONARCLOUD_TOKEN
-```
+Service port: 8080
 
-### Where results show up
-After the scan finishes, open the SonarQube/SonarCloud dashboard for project key `habit-tracker` to see bugs, code smells, vulnerabilities, and test coverage (from JaCoCo).
+Health checks:
+- Readiness probe
+- Liveness probe
 
-## Notes
-- Streaks (`currentStreak`, `longestStreak`) are recalculated automatically whenever a habit is marked/unmarked complete.
-- Because storage is in-memory, restarting the app clears all data. Swapping in a real database later just means replacing `HabitRepository` with a Spring Data JPA repository — the service/controller layers don't need to change.
+Resource requests and limits are configured in the Helm values file.
+
+## 7. Helm Configuration
+
+Helm chart location:
+
+habitapp-chart/
+
+Important configuration:
+- Replica count: 2
+- Image tag: 7
+- Service port: 8080
+- Ingress enabled: true
+- Ingress class: traefik
+- Host: habitapp.local
+
+## 8. Argo CD GitOps
+
+Argo CD continuously monitors the GitHub repository.
+
+Repository:
+https://github.com/priyamuthu062105-lang/HabitApp
+
+Branch: main
+
+Application: habitapp
+
+Namespace: argocd
+
+Deployment namespace: habitapp
+
+Automated synchronization and self-healing are enabled.
+
+## 9. Application Access
+
+Local browser access through Kubernetes port-forward:
+
+http://localhost:8080
+
+Ingress hostname:
+
+http://habitapp.local
+
+The Ingress resource is managed through the Helm chart and Argo CD.
+
+## 10. Verification Results
+
+The following checks have been completed:
+
+- Jenkins Build #7 successful
+- SonarCloud Quality Gate passed
+- Docker image successfully pushed
+- Helm lint validation passed
+- Helm template rendering passed
+- Kubernetes nodes Ready
+- HabitApp deployment: 2/2 replicas available
+- Internal Kubernetes Service returned HTTP 200
+- Traefik Ingress resource created
+- Argo CD application Synced and Healthy
+- Habit Tracker opened successfully in Firefox
+- Add Habit functionality tested
+- Mark Today Done functionality tested
+- Habit statistics updated successfully
+
+## 11. Useful Kubernetes Commands
+
+Check nodes:
+
+kubectl get nodes
+
+Check application pods:
+
+kubectl get pods -n habitapp
+
+Check deployment:
+
+kubectl get deployment -n habitapp
+
+Check service:
+
+kubectl get svc -n habitapp
+
+Check Ingress:
+
+kubectl get ingress -n habitapp
+
+Check Argo CD:
+
+kubectl get application habitapp -n argocd
+
+## 12. Project Outcome
+
+This project demonstrates an automated CI/CD and GitOps deployment workflow for a Java Spring Boot application using Jenkins, Docker, SonarCloud, Helm, Kubernetes, Argo CD, and Traefik.
+
+The application was successfully deployed and accessed through a browser in a local Kubernetes environment.
+
