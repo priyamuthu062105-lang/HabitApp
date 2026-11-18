@@ -1,5 +1,4 @@
 
-
 replicaCount: 2
 
 image:
@@ -35,7 +34,15 @@ service:
   port: 8080
 
 ingress:
-  enabled: false
+  enabled: true
+  className: traefik
+  annotations: {}
+  hosts:
+    - host: habitapp.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
 
 httpRoute:
   enabled: false
@@ -74,3 +81,4 @@ volumeMounts: []
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
